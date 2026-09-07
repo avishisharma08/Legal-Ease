@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LegalEase MVP - Quick Test</title>
+</head>
+<body style="padding: 20px; max-width: 800px; margin: 0 auto; font-family: sans-serif;">
+  <h1>LegalEase - Quick Test Client</h1>
+  <p>Minimal test client to test <code>http://localhost:8000/simplify</code> directly.</p>
+
+  <div>
+    <label for="rawText"><strong>Legal Text:</strong></label><br />
+    <textarea id="rawText" rows="10" style="width: 100%; margin-top: 8px; padding: 8px;" placeholder="Paste your legal text here..."></textarea>
+  </div>
+
+  <div style="margin-top: 12px;">
+    <button id="simplifyBtn" style="padding: 10px 20px; cursor: pointer;">Simplify</button>
+  </div>
+
+  <div id="error" style="margin-top: 15px; color: red; display: none;"></div>
+
+  <div id="resultContainer" style="margin-top: 20px; display: none;">
+    <h3>Simplified Version:</h3>
+    <div id="resultBox" style="padding: 12px; border: 1px solid #ccc; background-color: #f9f9f9; white-space: pre-wrap;"></div>
+  </div>
+
+  <script>
+    const btn = document.getElementById('simplifyBtn');
+    const textarea = document.getElementById('rawText');
+    const errorDiv = document.getElementById('error');
+    const resultContainer = document.getElementById('resultContainer');
+    const resultBox = document.getElementById('resultBox');
+
+    btn.addEventListener('click', async () => {
+      const text = textarea.value.trim();
+      if (!text) {
+        errorDiv.textContent = 'Please paste or type some legal text to simplify.';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Simplifying...';
+      errorDiv.style.display = 'none';
+      resultContainer.style.display = 'none';
+
+      try {
+        const response = await fetch('http://localhost:8000/simplify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.detail || 'Failed to simplify document.');
+        }
+
+        resultBox.textContent = data.simplified_text;
+        resultContainer.style.display = 'block';
+      } catch (err) {
+        errorDiv.textContent = 'Error: ' + (err.message || 'Could not connect to backend.');
+        errorDiv.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Simplify';
+      }
+    });
+  </script>
+</body>
+</html>
