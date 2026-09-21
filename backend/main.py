@@ -8,6 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 import google.generativeai as genai
+from fastapi import UploadFile, File, HTTPException
+import pdfplumber
+import io
 
 # Resolve the backend directory path to reliably find .env regardless of working directory
 BACKEND_DIR = Path(__file__).resolve().parent
@@ -317,7 +320,49 @@ async def analyze_contract(payload: AnalyzeRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to analyze contract: {error_message}"
         )
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
+@app.post("/extract-text")
+async def extract_text(file: UploadFile = File(...)):
+    contents = await file.read()
+
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File too large. Max size is 10MB.")
+
+    filename = file.filename.lower()
+
+    if filename.endswith(".txt"):
+        try:
+            extracted_text = contents.decode("utf-8")
+        except UnicodeDecodeError:
+            raise HTTPException(status_code=400, detail="Could not read text file. Please check the file encoding.")
+
+        return {"extracted_text": extracted_text, "source_type": "text"}
+
+    elif filename.endswith(".pdf"):
+        try:
+            extracted_text = ""
+            with pdfplumber.open(io.BytesIO(contents)) as pdf:
+                for page in pdf.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        extracted_text += page_text + "\n"
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Could not read PDF file: {str(e)}")
+
+        if not extracted_text.strip():
+            raise HTTPException(
+                status_code=422,
+                detail="No readable text found in this PDF. It may be a scanned document — OCR support is coming next."
+            )
+
+        return {"extracted_text": extracted_text.strip(), "source_type": "pdf"}
+
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported file type. Please upload a .txt or .pdf file."
+        )
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
