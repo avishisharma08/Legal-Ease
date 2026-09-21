@@ -20,19 +20,30 @@ import {
   FileCheck,
   Volume2,
   VolumeX,
-  GitCompare
+  GitCompare,
+  Languages,
+  Loader2,
+  FileUp,
+  X,
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
 
 export default function ContractAnalyzer({ onAskAssistant }) {
   const [selectedSampleId, setSelectedSampleId] = useState('sample-freelance');
-  const [contractText, setContractText] = useState(SAMPLE_CONTRACTS[1].fullText);
+  const [contractText, setContractText] = useState(SAMPLE_CONTRACTS[0].fullText);
   const [expandedClauseId, setExpandedClauseId] = useState('fc2');
   const [copied, setCopied] = useState(false);
+  const [copiedClauseId, setCopiedClauseId] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [liveAnalysis, setLiveAnalysis] = useState(null);
   const [error, setError] = useState('');
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  // Bilingual Language Toggle State ('en' | 'hi')
+  const [summaryLang, setSummaryLang] = useState('en');
 
   // Document-specific Q&A State
   const [docQuestion, setDocQuestion] = useState('');
@@ -68,8 +79,59 @@ export default function ContractAnalyzer({ onAskAssistant }) {
     setContractText(sample.fullText);
     setLiveAnalysis(null);
     setError('');
+    setUploadedFileName('');
     setDocQnAList([]);
     setExpandedClauseId(sample.clauses[0]?.id || '');
+  };
+
+  const handleFileUpload = async (file) => {
+    if (!file) return;
+    setUploadedFileName(file.name);
+    setIsExtracting(true);
+    setError('');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('http://localhost:8000/extract-text', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Failed to extract text from file.');
+      }
+      setContractText(data.extracted_text);
+      // Automatically clear previous analysis so user knows to run analyze
+      setLiveAnalysis(null);
+    } catch (err) {
+      console.error('File extraction error:', err);
+      setError(err.message || 'Error extracting text from uploaded file.');
+      setUploadedFileName('');
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileUpload(e.dataTransfer.files[0]);
+    }
   };
 
   const handleReanalyze = async () => {
@@ -113,19 +175,24 @@ export default function ContractAnalyzer({ onAskAssistant }) {
       const formattedClauses = (data.clauses || []).map((c, index) => ({
         id: `clause-${index}`,
         title: c.clause_title || 'Flagged Clause',
+        titleHi: c.clause_title_hi || c.clause_title || 'चिह्नित धारा',
         risk: normalizeRisk(c.severity),
         originalText: c.original_text || '',
         simplifiedText: c.plain_english || '',
-        recommendation: c.recommendation || ''
+        plainHindi: c.plain_hindi || c.plain_english || '',
+        recommendation: c.recommendation || '',
+        recommendationHi: c.recommendation_hi || c.recommendation || ''
       }));
 
       const formattedAnalysis = {
         id: 'live-' + Date.now(),
         title: data.title || 'Analyzed Agreement',
+        titleHi: data.title_hi || data.title || 'विश्लेषित अनुबंध',
         category: data.category || 'General Agreement',
         overallRisk: normalizeRisk(data.risk_level),
         riskScore: typeof data.risk_score === 'number' ? data.risk_score : 50,
         summary: data.executive_summary || '',
+        summaryHi: data.executive_summary_hi || data.executive_summary || '',
         clauses: formattedClauses
       };
 
@@ -142,10 +209,19 @@ export default function ContractAnalyzer({ onAskAssistant }) {
   };
 
   const handleCopySummary = () => {
-    const textToCopy = `[Legal-Ease Risk Report]\nContract: ${analysis.title}\nRisk Level: ${analysis.overallRisk} (${analysis.riskScore}/100)\n\nExecutive Summary:\n${analysis.summary}`;
+    const isHi = summaryLang === 'hi';
+    const titleText = isHi ? (analysis.titleHi || analysis.title) : analysis.title;
+    const summaryText = isHi ? (analysis.summaryHi || analysis.summary) : analysis.summary;
+    const textToCopy = `[Legal-Ease Risk Report]\nContract: ${titleText}\nRisk Level: ${analysis.overallRisk} (${analysis.riskScore}/100)\n\nSummary:\n${summaryText}`;
     navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyCounterOffer = (clauseId, fairText) => {
+    navigator.clipboard.writeText(fairText);
+    setCopiedClauseId(clauseId);
+    setTimeout(() => setCopiedClauseId(null), 2500);
   };
 
   const handleAskDocument = async (questionToAsk) => {
@@ -228,7 +304,7 @@ export default function ContractAnalyzer({ onAskAssistant }) {
       setIsRedlineOpen(true);
     } catch (err) {
       console.warn('Redline API fallback:', err);
-      // High-quality fallback counter-offer
+      // High-quality fallback counter-offer grounded in Indian Law
       const fallbackData = {
         redlined_contract: textToRedline.replace(
           /unlimited liability|solely liable|indemnify without limit/gi,
@@ -285,15 +361,50 @@ export default function ContractAnalyzer({ onAskAssistant }) {
       window.speechSynthesis.cancel();
       setIsPlayingAudio(false);
     } else {
-      const summaryText = analysis.summary || 'No summary available.';
-      const utterance = new SpeechSynthesisUtterance(summaryText);
-      utterance.rate = 0.95;
+      const isHi = summaryLang === 'hi';
+      const textToSpeak = isHi 
+        ? (analysis.summaryHi || analysis.summary || 'कोई सारांश उपलब्ध नहीं है।')
+        : (analysis.summary || 'No summary available.');
+      
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.rate = 0.92;
       utterance.pitch = 1.0;
+
+      const voices = window.speechSynthesis.getVoices();
+      if (isHi) {
+        const hindiVoice = voices.find(v => v.lang.startsWith('hi') || v.name.toLowerCase().includes('hindi') || v.name.toLowerCase().includes('india'));
+        if (hindiVoice) utterance.voice = hindiVoice;
+        utterance.lang = 'hi-IN';
+      } else {
+        const indianEngVoice = voices.find(v => v.lang === 'en-IN' || v.name.toLowerCase().includes('india'));
+        if (indianEngVoice) utterance.voice = indianEngVoice;
+        utterance.lang = 'en-IN';
+      }
+
       utterance.onend = () => setIsPlayingAudio(false);
       utterance.onerror = () => setIsPlayingAudio(false);
       window.speechSynthesis.speak(utterance);
       setIsPlayingAudio(true);
     }
+  };
+
+  const getFairCounterOffer = (clause) => {
+    if (clause.id === 'fc1') {
+      return 'Client shall pay Contractor ₹1,20,000 upon milestone completion within fifteen (15) business days of invoice receipt. An advance milestone retainer of 30% shall be remitted prior to commencement.';
+    }
+    if (clause.id === 'fc2') {
+      return 'All intellectual property, code, and deliverables created hereunder shall transfer and vest in Client strictly upon full, unconditional receipt of all milestone service fees.';
+    }
+    if (clause.id === 'fc3') {
+      return 'Either party may terminate this Agreement by giving fourteen (14) days prior written notice. Client shall pay Contractor for all services performed and hours incurred up to the date of termination.';
+    }
+    if (clause.id === 'fc4') {
+      return 'Clause 5 (Non-Solicitation & Liquidated Damages) is deleted in its entirety in accordance with Section 27 (void restraint of trade) and Section 74 of the Indian Contract Act 1872.';
+    }
+    if (clause.recommendation) {
+      return `Proposed Fair Revision: ${clause.recommendation}`;
+    }
+    return 'The parties agree to mutually negotiate a balanced, commercially standard clause compliant with the Indian Contract Act 1872.';
   };
 
   // SVG Gauge calculations
@@ -333,35 +444,35 @@ export default function ContractAnalyzer({ onAskAssistant }) {
         <div className="trust-ribbon">
           <div className="trust-ribbon-item">
             <CheckCircle2 size={13} className="trust-check-icon" />
-            <span>Indian Contract Act 1872 Compliant</span>
+            <span>Indian Contract Act 1872 Grounded</span>
           </div>
           <div className="trust-ribbon-sep" />
           <div className="trust-ribbon-item">
             <CheckCircle2 size={13} className="trust-check-icon" />
-            <span>Clause-by-Clause Forensic Audit</span>
+            <span>OCR & Multi-Format Ingestion</span>
           </div>
           <div className="trust-ribbon-sep" />
           <div className="trust-ribbon-item">
             <CheckCircle2 size={13} className="trust-check-icon" />
-            <span>Plain-English Translation</span>
+            <span>Bilingual English & हिंदी Intelligence</span>
           </div>
           <div className="trust-ribbon-sep" />
           <div className="trust-ribbon-item">
             <CheckCircle2 size={13} className="trust-check-icon" />
-            <span>Direct Document Grounded Q&A</span>
+            <span>Instant Redline Counter-Offer</span>
           </div>
         </div>
       </section>
 
       {/* Main Analyzer Grid */}
       <div className="analyzer-grid">
-        {/* Left Side: Editor & Sample Selector */}
+        {/* Left Side: Editor, Dropzone & Sample Selector */}
         <div className="glass-panel editor-card">
           <div className="sample-selector">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className="selector-label">Load Preset Agreement:</span>
+              <span className="selector-label">Load Preset Indian Agreement:</span>
               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                Click to load sample contract
+                Click sample to test live risk audit
               </span>
             </div>
             <div className="sample-buttons">
@@ -378,8 +489,79 @@ export default function ContractAnalyzer({ onAskAssistant }) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span className="selector-label">Contract / Agreement Text:</span>
+          {/* Interactive Drag-and-Drop Document Dropzone */}
+          <div 
+            className={`dropzone-container ${isDragOver ? 'dropzone-active' : ''} ${isExtracting ? 'dropzone-extracting' : ''}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => !isExtracting && document.getElementById('contractFileUpload').click()}
+          >
+            <input
+              type="file"
+              id="contractFileUpload"
+              accept=".pdf,.png,.jpg,.jpeg,.txt,.docx"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  handleFileUpload(e.target.files[0]);
+                }
+              }}
+            />
+
+            {isExtracting ? (
+              <div className="dropzone-content-loading">
+                <Loader2 size={24} className="animate-spin text-blue-400" />
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontWeight: 600, color: '#93c5fd', fontSize: '0.88rem' }}>
+                    Extracting Contract Text via OCR Engine...
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Reading {uploadedFileName} — converting scanned clauses into structured legal text
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="dropzone-content">
+                <div className="dropzone-icon-circle">
+                  <UploadCloud size={20} color="var(--primary)" />
+                </div>
+                <div className="dropzone-text-group">
+                  <div className="dropzone-primary-text">
+                    {uploadedFileName ? (
+                      <span style={{ color: '#6ee7b7', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <FileCheck size={14} /> Active File: <strong>{uploadedFileName}</strong>
+                      </span>
+                    ) : (
+                      <span>
+                        Drag & Drop document or <span className="dropzone-browse-link">Browse files</span>
+                      </span>
+                    )}
+                  </div>
+                  <div className="dropzone-sub-text">
+                    Supports PDF, Scanned Images (OCR), Word (.docx) & Plain Text
+                  </div>
+                </div>
+                {uploadedFileName && (
+                  <button 
+                    type="button" 
+                    className="dropzone-clear-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setUploadedFileName('');
+                      setContractText('');
+                    }}
+                    title="Clear uploaded document"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.25rem' }}>
+            <span className="selector-label">Or Paste Agreement / Clause Text Below:</span>
             <span className="character-count-pill">
               {contractText.length.toLocaleString()} characters
             </span>
@@ -395,12 +577,12 @@ export default function ContractAnalyzer({ onAskAssistant }) {
           <div className="action-buttons-row">
             <button
               className="btn-primary"
-              style={{ flex: 1.2, minWidth: '170px' }}
+              style={{ flex: 1.2, minWidth: '175px' }}
               onClick={handleReanalyze}
               disabled={isAnalyzing || isExtracting}
             >
               <Zap size={16} /> 
-              <span>{isAnalyzing ? 'Analyzing Statutory Clauses...' : 'Analyze Document'}</span>
+              <span>{isAnalyzing ? 'Auditing Statutory Clauses...' : 'Analyze Document'}</span>
             </button>
 
             <button
@@ -411,55 +593,12 @@ export default function ContractAnalyzer({ onAskAssistant }) {
               <span>{showDocQnA ? 'Close Doc Q&A' : 'Ask AI About Doc'}</span>
             </button>
 
-            <input
-              type="file"
-              id="fileUpload"
-              accept=".txt,.pdf,.jpg,.jpeg,.png"
-              style={{ display: 'none' }}
-              onChange={async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                setUploadedFileName(file.name);
-                setIsExtracting(true);
-                setError('');
-                const formData = new FormData();
-                formData.append('file', file);
-                try {
-                  const response = await fetch('http://localhost:8000/extract-text', {
-                    method: 'POST',
-                    body: formData,
-                  });
-                  const data = await response.json();
-                  if (!response.ok) {
-                    throw new Error(data.detail || 'Failed to extract text from file.');
-                  }
-                  setContractText(data.extracted_text);
-                } catch (err) {
-                  setError(err.message);
-                  setUploadedFileName('');
-                } finally {
-                  setIsExtracting(false);
-                }
-              }}
-            />
-
-            <button
-              className="btn-secondary"
-              onClick={() => document.getElementById('fileUpload').click()}
-              disabled={isAnalyzing}
-              title="Upload PDF, Image (OCR), or Text file"
-            >
-              <UploadCloud size={15} /> 
-              <span style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {isExtracting ? 'Extracting OCR...' : uploadedFileName ? uploadedFileName : 'Upload Doc'}
-              </span>
-            </button>
-
             <button
               className="btn-ghost"
               onClick={() => {
                 setContractText('');
                 setError('');
+                setUploadedFileName('');
                 setDocQnAList([]);
               }}
               disabled={isAnalyzing}
@@ -565,14 +704,13 @@ export default function ContractAnalyzer({ onAskAssistant }) {
                 </span>
               </div>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', margin: 0, lineHeight: 1.25 }}>
-                {analysis.title}
+                {summaryLang === 'hi' ? (analysis.titleHi || analysis.title) : analysis.title}
               </h3>
             </div>
 
             {/* SVG Circular Risk Gauge */}
             <div className="svg-gauge-container">
               <svg width="76" height="76" viewBox="0 0 80 80">
-                {/* Background Ring Track */}
                 <circle
                   cx="40"
                   cy="40"
@@ -581,7 +719,6 @@ export default function ContractAnalyzer({ onAskAssistant }) {
                   strokeWidth="6"
                   fill="none"
                 />
-                {/* Animated Meter Progress Ring */}
                 <circle
                   cx="40"
                   cy="40"
@@ -595,7 +732,6 @@ export default function ContractAnalyzer({ onAskAssistant }) {
                   transform="rotate(-90 40 40)"
                   style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1)' }}
                 />
-                {/* Center Score Number */}
                 <text
                   x="40"
                   y="38"
@@ -634,21 +770,43 @@ export default function ContractAnalyzer({ onAskAssistant }) {
               <GitCompare size={15} />
               <span>{isRedlining ? 'Drafting Redline Counter-Offer...' : '⚡ Generate Fair Redline & Counter-Offer'}</span>
             </button>
-            <button 
-              className={`btn-secondary ${isPlayingAudio ? 'active-audio' : ''}`}
-              onClick={handleToggleSpeech}
-              title="Listen to Executive Summary via Speech Synthesis"
-            >
-              {isPlayingAudio ? <VolumeX size={15} color="#ef4444" /> : <Volume2 size={15} color="#93c5fd" />}
-              <span>{isPlayingAudio ? 'Stop Audio' : '🔊 Suno (Audio)'}</span>
-            </button>
+            
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              {/* Bilingual English / Hindi Toggle Pill */}
+              <div className="bilingual-toggle-container">
+                <button 
+                  className={`bilingual-pill ${summaryLang === 'en' ? 'active' : ''}`}
+                  onClick={() => setSummaryLang('en')}
+                  title="Switch to English Legal Analysis"
+                >
+                  EN
+                </button>
+                <button 
+                  className={`bilingual-pill ${summaryLang === 'hi' ? 'active' : ''}`}
+                  onClick={() => setSummaryLang('hi')}
+                  title="हिंदी में कानूनी सारांश देखें"
+                >
+                  हिंदी
+                </button>
+              </div>
+
+              <button 
+                className={`btn-secondary ${isPlayingAudio ? 'active-audio' : ''}`}
+                onClick={handleToggleSpeech}
+                title="Listen to Executive Summary via Speech Synthesis"
+              >
+                {isPlayingAudio ? <VolumeX size={15} color="#ef4444" /> : <Volume2 size={15} color="#93c5fd" />}
+                <span>{isPlayingAudio ? 'Stop' : '🔊 Suno'}</span>
+              </button>
+            </div>
           </div>
 
-          {/* Plain English Summary Box */}
+          {/* Executive Risk Summary Box */}
           <div className="summary-box-card" style={{ borderLeft: `3px solid ${gaugeColor}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', color: '#93c5fd', letterSpacing: '0.06em' }}>
-                Executive Plain-English Summary
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', color: '#93c5fd', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <Languages size={13} />
+                {summaryLang === 'hi' ? 'कार्यकारी कानूनी सारांश (हिंदी)' : 'Executive Plain-English Summary'}
               </span>
               <button 
                 onClick={handleCopySummary}
@@ -660,7 +818,9 @@ export default function ContractAnalyzer({ onAskAssistant }) {
               </button>
             </div>
             <p style={{ fontSize: '0.88rem', color: 'var(--text-main)', lineHeight: 1.6, margin: 0 }}>
-              {analysis.summary}
+              {summaryLang === 'hi' 
+                ? (analysis.summaryHi || analysis.summary) 
+                : analysis.summary}
             </p>
           </div>
 
@@ -684,6 +844,9 @@ export default function ContractAnalyzer({ onAskAssistant }) {
               {analysis.clauses.map((clause) => {
                 const isExpanded = expandedClauseId === clause.id;
                 const clauseBorderColor = getGaugeColor(clause.risk);
+                const fairCounterOfferText = getFairCounterOffer(clause);
+                const isClauseCopied = copiedClauseId === clause.id;
+
                 return (
                   <div 
                     key={clause.id} 
@@ -697,7 +860,7 @@ export default function ContractAnalyzer({ onAskAssistant }) {
                       <div className="clause-title-group">
                         <span className={`risk-badge ${clause.risk}`}>{clause.risk}</span>
                         <span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#f8fafc' }}>
-                          {clause.title}
+                          {summaryLang === 'hi' ? (clause.titleHi || clause.title) : clause.title}
                         </span>
                       </div>
                       {isExpanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
@@ -705,31 +868,68 @@ export default function ContractAnalyzer({ onAskAssistant }) {
 
                     {isExpanded && (
                       <div className="clause-body">
-                        <div>
-                          <span className="clause-section-title" style={{ color: 'var(--text-muted)' }}>
-                            Original Contract Text:
-                          </span>
-                          <div className="original-box">
-                            "{clause.originalText}"
+                        {/* Interactive Clause Diff Card: 🔴 Predatory Original vs 🟢 Fair Counter-Offer */}
+                        <div className="clause-diff-card">
+                          <div className="diff-col-predatory">
+                            <div className="diff-tag-row">
+                              <span className="diff-tag-danger">🔴 Original Predatory Draft</span>
+                            </div>
+                            <div className="diff-text-original">
+                              "{clause.originalText}"
+                            </div>
+                          </div>
+
+                          <div className="diff-col-counteroffer">
+                            <div className="diff-tag-row" style={{ justifyContent: 'space-between' }}>
+                              <span className="diff-tag-fair">🟢 Fair Negotiated Counter-Offer</span>
+                              <button 
+                                className="diff-copy-pill"
+                                onClick={() => handleCopyCounterOffer(clause.id, fairCounterOfferText)}
+                                title="Copy negotiated counter-offer clause"
+                              >
+                                {isClauseCopied ? <Check size={11} color="#34d399" /> : <Copy size={11} />}
+                                <span>{isClauseCopied ? 'Copied Clause!' : 'Copy Clause'}</span>
+                              </button>
+                            </div>
+                            <div className="diff-text-fair">
+                              "{fairCounterOfferText}"
+                            </div>
                           </div>
                         </div>
 
+                        {/* Plain Language Explanation */}
                         <div>
                           <span className="clause-section-title" style={{ color: '#93c5fd' }}>
-                            💡 What This Actually Means (Plain English):
+                            💡 {summaryLang === 'hi' ? 'वास्तविक कानूनी अर्थ (Plain Hindi):' : 'What This Actually Means (Plain Language):'}
                           </span>
                           <div className="simplified-box">
-                            {clause.simplifiedText}
+                            {summaryLang === 'hi' 
+                              ? (clause.plainHindi || clause.simplifiedText)
+                              : clause.simplifiedText}
                           </div>
                         </div>
 
+                        {/* Actionable Legal Recommendation */}
                         <div>
                           <span className="clause-section-title" style={{ color: '#6ee7b7' }}>
-                            🛡️ Recommended Action / Negotiating Tip:
+                            🛡️ {summaryLang === 'hi' ? 'सलाह एवं बातचीत की रणनीति (Negotiation Strategy):' : 'Recommended Action / Counter-Offer Tip:'}
                           </span>
                           <div className="recommendation-box">
-                            {clause.recommendation}
+                            {summaryLang === 'hi' 
+                              ? (clause.recommendationHi || clause.recommendation)
+                              : clause.recommendation}
                           </div>
+                        </div>
+
+                        {/* Quick Action footer inside clause */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', paddingTop: '4px' }}>
+                          <button 
+                            className="btn-ghost" 
+                            style={{ fontSize: '0.75rem', padding: '4px 8px' }}
+                            onClick={() => handleGenerateRedline()}
+                          >
+                            <GitCompare size={12} /> Open Full Redline Studio
+                          </button>
                         </div>
                       </div>
                     )}
