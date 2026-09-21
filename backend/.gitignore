@@ -11,3 +11,7 @@ __pycache__/
 .venv/
 venv/
 env/
+test.txt
+*.pyc
+__pycache__/
+.env
