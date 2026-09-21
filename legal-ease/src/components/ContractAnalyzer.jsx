@@ -10,7 +10,7 @@ import {
   ChevronUp, 
   Copy, 
   Check, 
-  Zap, 
+  Zap,
   ArrowRight,
   MessageSquareText
 } from 'lucide-react';
@@ -24,6 +24,8 @@ export default function ContractAnalyzer({ onAskAssistant }) {
   const [liveAnalysis, setLiveAnalysis] = useState(null);
   const [error, setError] = useState('');
   const [uploadedFileName, setUploadedFileName] = useState('');
+  const [isExtracting, setIsExtracting] = useState(false);
+  
 
   const activeSample = SAMPLE_CONTRACTS.find(s => s.id === selectedSampleId) || SAMPLE_CONTRACTS[0];
   const analysis = liveAnalysis || activeSample;
@@ -166,7 +168,8 @@ export default function ContractAnalyzer({ onAskAssistant }) {
               className="btn-primary"
               style={{ flex: 1, opacity: isAnalyzing ? 0.75 : 1, cursor: isAnalyzing ? 'not-allowed' : 'pointer' }}
               onClick={handleReanalyze}
-              disabled={isAnalyzing}
+              disabled={isAnalyzing || isExtracting}
+              
             >
               <Zap size={16} /> {isAnalyzing ? 'Scanning Clauses...' : 'Analyze Document'}
             </button>
@@ -185,19 +188,38 @@ export default function ContractAnalyzer({ onAskAssistant }) {
                 id="fileUpload"
                 accept=".txt,.pdf,.jpg,.jpeg,.png"
                 style={{ display: 'none' }}
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files[0];
-                  if (file) {
-                    setUploadedFileName(file.name);
+                  if (!file) return;
+                  setUploadedFileName(file.name);
+                  setIsExtracting(true);
+                   setError('');
+                   const formData = new FormData();
+                   formData.append('file', file);
+                  try {
+                    const response = await fetch('http://127.0.0.1:8000/extract-text', {
+                    method: 'POST',
+                    body: formData,
+                   });
+                   const data = await response.json();
+                   if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to extract text from file.');
                   }
-                }}
-              />
+                  setContractText(data.extracted_text);
+                }
+                  catch (err) {
+                    setError(err.message);
+                    setUploadedFileName('');
+                   } finally {
+                    setIsExtracting(false);
+                  }
+                }}/>
               <button
                 className="btn-secondary"
                 onClick={() => document.getElementById('fileUpload').click()}
                 disabled={isAnalyzing}
               >
-                <FileText size={16} /> {uploadedFileName ? uploadedFileName : 'Upload Document'}
+                <FileText size={16} /> {isExtracting ? 'Extracting text...' : uploadedFileName ? uploadedFileName : 'Upload Document'}
               </button>
           </div>
 
