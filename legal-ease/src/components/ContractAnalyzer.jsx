@@ -23,6 +23,7 @@ export default function ContractAnalyzer({ onAskAssistant }) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [liveAnalysis, setLiveAnalysis] = useState(null);
   const [error, setError] = useState('');
+  const [uploadedFileName, setUploadedFileName] = useState('');
 
   const activeSample = SAMPLE_CONTRACTS.find(s => s.id === selectedSampleId) || SAMPLE_CONTRACTS[0];
   const analysis = liveAnalysis || activeSample;
@@ -179,6 +180,25 @@ export default function ContractAnalyzer({ onAskAssistant }) {
             >
               Clear Text
             </button>
+              <input
+                type="file"
+                id="fileUpload"
+                accept=".txt,.pdf,.jpg,.jpeg,.png"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    setUploadedFileName(file.name);
+                  }
+                }}
+              />
+              <button
+                className="btn-secondary"
+                onClick={() => document.getElementById('fileUpload').click()}
+                disabled={isAnalyzing}
+              >
+                <FileText size={16} /> {uploadedFileName ? uploadedFileName : 'Upload Document'}
+              </button>
           </div>
 
           {error && (
