@@ -25,15 +25,15 @@ export default function HomePage({ onNavigate, onOpenHelplines }) {
   const features = [
     {
       id: 'analyzer',
-      badge: 'Contract & Document Intelligence',
+      badge: 'OCR & Redline Studio Intelligence',
       badgeColor: '#3b82f6',
       badgeBg: 'rgba(59, 130, 246, 0.12)',
       title: 'Forensic Contract Analyzer',
-      description: 'Audit freelance contracts, NDAs, employment terms, and tenancy agreements. Detect predatory clauses, uncapped indemnity, and unfair IP forfeiture before you sign.',
+      description: 'Audit agreements, drop PDFs/scanned images (OCR), view bilingual English & हिंदी summaries, listen via Suno Audio, and generate redline counter-offers.',
       icon: FileText,
-      stats: '1872 Contract Act Grounded',
-      highlights: ['Instant Risk Score (0-100)', 'Plain-English Clause Translation', 'Strategic Negotiation Tips'],
-      cta: 'Analyze an Agreement'
+      stats: '1872 Contract Act & ₹ INR Grounded',
+      highlights: ['OCR Drag & Drop Document Ingestion', 'Bilingual [ English | हिंदी ] Mode', 'Redline Counter-Offer Studio & Diff Cards'],
+      cta: 'Open Contract Analyzer'
     },
     {
       id: 'rti',
@@ -49,15 +49,15 @@ export default function HomePage({ onNavigate, onOpenHelplines }) {
     },
     {
       id: 'rights',
-      badge: 'Citizen Dispute Protection',
+      badge: 'Printable Demand Notice Wizard',
       badgeColor: '#f59e0b',
       badgeBg: 'rgba(245, 158, 11, 0.12)',
       title: 'Citizen Rights & Legal Notices',
-      description: 'Defend yourself against illegal rent hikes, withheld security deposits, defective consumer goods, salary delays, and online cyber fraud with formal statutory notices.',
+      description: 'Defend yourself against illegal rent hikes, withheld security deposits, defective goods, and salary delays with live printable Speed Post AD legal notices.',
       icon: Shield,
-      stats: 'Model Tenancy & CPA 2019',
-      highlights: ['Pre-Drafted Legal Demand Notices', 'Step-by-Step Action Playbooks', 'Statutory Limitation Timelines'],
-      cta: 'View Citizen Rights Guides'
+      stats: 'Model Tenancy 2021 & CPA 2019',
+      highlights: ['Interactive Notice Variable Wizard', '1-Click Print & PDF Formal Letterhead', 'Section 20 MTA & Section 35 CPA Ready'],
+      cta: 'Open Legal Notice Wizard'
     },
     {
       id: 'dictionary',
