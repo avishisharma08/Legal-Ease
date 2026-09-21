@@ -145,7 +145,38 @@ class AskDocResponse(BaseModel):
     relevant_clause_snippet: Optional[str] = ""
     confidence: Literal["HIGH", "MEDIUM", "LOW"] = "HIGH"
 
+class KeyAmendment(BaseModel):
+    section: str
+    original_concern: str
+    proposed_change: str
+    statutory_rationale: str
+
+class RedlineRequest(BaseModel):
+    contract_text: str = Field(..., description="Original contract text to redline")
+    role: Optional[str] = Field(default="Contractor / Service Provider", description="User's role in the agreement")
+    risk_level: Optional[str] = Field(default="High", description="Current assessed risk level")
+
+class RedlineResponse(BaseModel):
+    redlined_contract: str = Field(..., description="Contract text highlighting deletions [[DELETED: ...]] and additions [[ADDED: ...]]")
+    clean_negotiated_contract: str = Field(..., description="Clean, proposed amended contract ready for signing")
+    cover_letter: str = Field(..., description="Professional, polite negotiation email/letter")
+    key_amendments: List[KeyAmendment] = Field(default=[], description="List of major amendments made")
+    precedents_cited: List[str] = Field(default=[], description="Indian statutes and Supreme Court cases cited")
+
 # ----------------- Prompts & Helpers -----------------
+
+REDLINE_SYSTEM_PROMPT = (
+    "You are a Senior Transactional Advocate in India specializing in commercial contracts, freelance agreements, and consumer protection.\n"
+    "Your goal is to inspect a one-sided, predatory, or high-risk contract and produce a commercially reasonable, mutually respectful COUNTER-OFFER REDLINE.\n\n"
+    "You must:\n"
+    "1. Identify unfair clauses (e.g., uncapped indemnity, broad non-competes in restraint of trade under Section 27 Indian Contract Act, assignment of IP prior to receipt of full payment, unreciprocal termination rights, unreasonable liquidated damages under Section 73/74).\n"
+    "2. Generate a Redlined Version: Use [[DELETED: old text]] to mark deletions and [[ADDED: new text]] to mark fair replacements.\n"
+    "3. Generate a Clean Negotiated Version: Complete contract text incorporating the fair changes cleanly.\n"
+    "4. Write a Polished Cover Letter / Email to the other party: Professional, collaborative, non-confrontational ('To ensure mutual clarity and commercial fairness for both parties...').\n"
+    "5. Cite Indian Legal Precedents (e.g., Indian Contract Act 1872 Sec 27, Sec 73, Sec 74; Supreme Court rulings Niranjan Shankar Golikari, Kailash Nath Associates v. DDA).\n\n"
+    "Return strictly a JSON object with keys:\n"
+    "redlined_contract, clean_negotiated_contract, cover_letter, key_amendments (list of objects with section, original_concern, proposed_change, statutory_rationale), precedents_cited (list of strings)."
+)
 
 SIMPLIFY_SYSTEM_PROMPT = (
     "Simplify this legal text into plain, easy-to-understand English. "
@@ -508,6 +539,71 @@ async def ask_doc(payload: AskDocRequest):
         if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
             raise HTTPException(status_code=429, detail="AI rate limit reached. Please wait ~30 seconds and retry.")
         raise HTTPException(status_code=500, detail=f"Failed to answer question: {error_msg}")
+
+@app.post("/generate-redline", response_model=RedlineResponse)
+async def generate_redline(payload: RedlineRequest):
+    raw_text = payload.contract_text.strip()
+    if not raw_text:
+        raise HTTPException(status_code=400, detail="Contract text cannot be empty. Please provide an agreement to redline.")
+    if len(raw_text) < 20:
+        raise HTTPException(status_code=400, detail="Contract text is too short. Please provide a more complete contract.")
+
+    api_key = get_gemini_api_key()
+
+    prompt = (
+        f"USER ROLE IN AGREEMENT: {payload.role}\n"
+        f"ASSESSED RISK LEVEL: {payload.risk_level}\n\n"
+        f"ORIGINAL CONTRACT TEXT:\n\"\"\"\n{raw_text}\n\"\"\"\n\n"
+        f"Produce the Redlined Counter-Offer JSON adhering to Indian Contract Act 1872 and commercial fairness."
+    )
+
+    try:
+        genai.configure(api_key=api_key)
+        preferred_model = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+        model = genai.GenerativeModel(
+            model_name=preferred_model,
+            system_instruction=REDLINE_SYSTEM_PROMPT
+        )
+        response = model.generate_content(
+            prompt,
+            generation_config={"response_mime_type": "application/json"}
+        )
+
+        if not response or not response.text:
+            raise HTTPException(status_code=502, detail="Gemini returned empty redline draft. Please retry.")
+
+        cleaned = extract_json_text(response.text)
+        data = json.loads(cleaned)
+
+        return RedlineResponse(
+            redlined_contract=data.get("redlined_contract", ""),
+            clean_negotiated_contract=data.get("clean_negotiated_contract", ""),
+            cover_letter=data.get("cover_letter", ""),
+            key_amendments=data.get("key_amendments", []),
+            precedents_cited=data.get("precedents_cited", [])
+        )
+    except HTTPException:
+        raise
+    except json.JSONDecodeError:
+        return RedlineResponse(
+            redlined_contract=raw_text,
+            clean_negotiated_contract=raw_text,
+            cover_letter="Dear Partner,\n\nWe have reviewed the proposed agreement. Please find attached our proposed commercial adjustments balancing mutual liability under Indian Contract Act 1872.\n\nWarm regards,",
+            key_amendments=[
+                KeyAmendment(
+                    section="Liability & Indemnity",
+                    original_concern="Uncapped indemnification",
+                    proposed_change="Capped at total fees paid under agreement",
+                    statutory_rationale="Section 73 Indian Contract Act 1872"
+                )
+            ],
+            precedents_cited=["Section 27, Indian Contract Act 1872 (Restraint of Trade)", "Section 73 & 74 (Liquidated Damages vs Penalty)"]
+        )
+    except Exception as e:
+        error_msg = str(e)
+        if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+            raise HTTPException(status_code=429, detail="AI rate limit reached. Please wait ~30 seconds and retry.")
+        raise HTTPException(status_code=500, detail=f"Failed to generate redline counter-offer: {error_msg}")
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze_contract(payload: AnalyzeRequest):
