@@ -1828,6 +1828,7 @@ body::after {
   color: #cbd5e1;
 }
 
+
 .proposed-box {
   background: rgba(16, 185, 129, 0.06);
   border-left: 3px solid #10b981;
@@ -1836,12 +1837,310 @@ body::after {
   color: #cbd5e1;
 }
 
+/* ==========================================================================
+   Interactive Dropzone Component
+   ========================================================================== */
+.dropzone-container {
+  border: 1.5px dashed rgba(59, 130, 246, 0.4);
+  background: rgba(37, 99, 235, 0.035);
+  border-radius: 10px;
+  padding: 0.85rem 1.15rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-bottom: 0.75rem;
+}
+
+.dropzone-container:hover {
+  border-color: rgba(59, 130, 246, 0.85);
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.dropzone-container.dropzone-active {
+  border-color: #60a5fa !important;
+  background: rgba(37, 99, 235, 0.16) !important;
+  transform: scale(1.01);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.25);
+}
+
+.dropzone-container.dropzone-extracting {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
+  cursor: wait;
+}
+
+.dropzone-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dropzone-content-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0.5rem 0;
+}
+
+.dropzone-icon-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dropzone-text-group {
+  flex: 1;
+}
+
+.dropzone-primary-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.dropzone-browse-link {
+  color: #60a5fa;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.dropzone-sub-text {
+  font-size: 0.73rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.dropzone-clear-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dropzone-clear-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* ==========================================================================
+   Bilingual Pill Toggle
+   ========================================================================== */
+.bilingual-toggle-container {
+  display: inline-flex;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.bilingual-pill {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 4px 10px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.bilingual-pill:hover {
+  color: #fff;
+}
+
+.bilingual-pill.active {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ==========================================================================
+   Clause Redline Diff Cards (Predatory vs Fair Counter-Offer)
+   ========================================================================== */
+.clause-diff-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 768px) {
+  .clause-diff-card {
+    grid-template-columns: 1fr;
+  }
+}
+
+.diff-col-predatory {
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.diff-col-counteroffer {
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.diff-tag-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.diff-tag-danger {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #f87171;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.diff-tag-fair {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #34d399;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.diff-copy-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.diff-copy-pill:hover {
+  background: rgba(16, 185, 129, 0.25);
+  color: #fff;
+}
+
+.diff-text-original {
+  font-size: 0.8rem;
+  color: #fca5a5;
+  line-height: 1.5;
+  font-family: var(--font-mono);
+  word-break: break-word;
+}
+
+.diff-text-fair {
+  font-size: 0.8rem;
+  color: #a7f3d0;
+  line-height: 1.5;
+  font-family: var(--font-mono);
+  word-break: break-word;
+}
+
+/* ==========================================================================
+   Printable Demand Notice Wizard
+   ========================================================================== */
+.notice-wizard-panel {
+  background: rgba(11, 17, 32, 0.85);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 12px;
+}
+
+.wizard-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .wizard-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wizard-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wizard-field label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.wizard-input {
+  font-size: 0.82rem;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.printable-notice-container {
+  position: relative;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.printable-notice-badge {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #090e1a;
+  padding: 6px 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.printable-notice {
+  width: 100%;
+  background: #060911;
+  color: #e2e8f0;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  padding: 1.15rem;
+  border: none;
+  resize: vertical;
+}
+
+/* ==========================================================================
+   Clean @media print Formatting
+   ========================================================================== */
 @media print {
   body * {
     visibility: hidden;
   }
   .rti-paper-view, .rti-paper-view *,
   .printable-notice, .printable-notice *,
+  .printable-notice-container, .printable-notice-container *,
   .redline-paper-viewer, .redline-paper-viewer * {
     visibility: visible;
   }
@@ -1854,6 +2153,13 @@ body::after {
     background: #fff !important;
     border: none !important;
     box-shadow: none !important;
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 11pt !important;
+    line-height: 1.5 !important;
+  }
+  .printable-notice-badge, .btn-primary, .btn-secondary, .btn-ghost {
+    display: none !important;
   }
 }
+
 

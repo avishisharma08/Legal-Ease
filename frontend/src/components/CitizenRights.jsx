@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CITIZEN_RIGHTS_CATEGORIES, CITIZEN_RIGHTS_GUIDES } from '../data/citizenRightsData';
 import { 
   Shield, 
@@ -13,7 +13,12 @@ import {
   Building2, 
   MessageSquareText, 
   Sparkles,
-  Scale
+  Scale,
+  Sliders,
+  Download,
+  Edit3,
+  RefreshCw,
+  Clock
 } from 'lucide-react';
 
 export default function CitizenRights({ onNavigateToRTI, onAskAssistant }) {
@@ -21,15 +26,115 @@ export default function CitizenRights({ onNavigateToRTI, onAskAssistant }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGuideId, setSelectedGuideId] = useState('tenant-deposit');
   const [copied, setCopied] = useState(false);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
 
-  // Editable notice state for customization
+  // Structured notice customization state
+  const [noticeForm, setNoticeForm] = useState({
+    senderName: 'Ayush Pandey',
+    senderContact: '+91 98765 43210 | citizen@legalease.in',
+    senderAddress: 'Apt 402, Lotus Towers, Sector 62, Noida, UP - 201301',
+    opponentName: 'Shri Rajesh Sharma (Landlord / Vendor)',
+    opponentAddress: 'Plot 18, Commercial Block, Sector 18, Noida, UP',
+    disputedAmount: '₹65,000',
+    incidentDate: '15th May 2024',
+    noticeDays: '15',
+    transactionRef: 'AGR/2023-24/09'
+  });
+
   const activeGuide = CITIZEN_RIGHTS_GUIDES.find(g => g.id === selectedGuideId) || CITIZEN_RIGHTS_GUIDES[0];
   const [customNoticeBody, setCustomNoticeBody] = useState(activeGuide.sampleNotice.body);
 
   const handleSelectGuide = (guide) => {
     setSelectedGuideId(guide.id);
     setCustomNoticeBody(guide.sampleNotice.body);
+    // Update reasonable defaults based on guide category
+    if (guide.id === 'tenant-deposit') {
+      setNoticeForm(prev => ({
+        ...prev,
+        opponentName: 'Shri R. K. Verma (Landlord)',
+        disputedAmount: '₹60,000',
+        transactionRef: 'Rental Lease Agreement dated 01-Jun-2023'
+      }));
+    } else if (guide.id === 'consumer-defective') {
+      setNoticeForm(prev => ({
+        ...prev,
+        opponentName: 'Customer Grievance Redressal Officer, E-Commerce Retail Ltd.',
+        disputedAmount: '₹34,999',
+        transactionRef: 'Order Invoice #INV-2024-99823'
+      }));
+    } else if (guide.id === 'employee-salary') {
+      setNoticeForm(prev => ({
+        ...prev,
+        opponentName: 'The Management & Human Resources, TechNova Solutions Pvt. Ltd.',
+        disputedAmount: '₹1,45,000',
+        transactionRef: 'Employee ID #EMP-8841 (Relieving Dues)'
+      }));
+    } else if (guide.id === 'cyber-fraud') {
+      setNoticeForm(prev => ({
+        ...prev,
+        opponentName: 'The Branch Manager & Nodal Grievance Officer, State Bank of India',
+        disputedAmount: '₹48,500',
+        transactionRef: 'Unauthorized UPI UTR #412093849102'
+      }));
+    }
   };
+
+  const generateDynamicNotice = () => {
+    const today = new Date().toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    return `LEGAL DEMAND NOTICE
+DELIVERED VIA SPEED POST WITH ACKNOWLEDGEMENT DUE (RPAD) & REGISTERED EMAIL
+
+DATE: ${today}
+
+TO:
+${noticeForm.opponentName}
+${noticeForm.opponentAddress}
+
+FROM:
+${noticeForm.senderName}
+${noticeForm.senderAddress}
+Contact: ${noticeForm.senderContact}
+
+SUBJECT: STATUTORY LEGAL DEMAND NOTICE UNDER ${activeGuide.applicableLaw.toUpperCase()} FOR IMMEDIATE RESOLUTION & DISBURSEMENT OF ${noticeForm.disputedAmount}
+
+Sir / Madam,
+
+Under instructions and information from my client / undersigned, I hereby issue this formal Statutory Demand Notice:
+
+1. BACKGROUND & STATUTORY STATUS:
+Pursuant to the transaction / relationship between the parties under Reference [${noticeForm.transactionRef}], originating on or about ${noticeForm.incidentDate}, the undersigned has fulfilled all reciprocal obligations in accordance with Indian Law.
+
+2. LEGAL VIOLATION & GROUNDING:
+Under the provisions of ${activeGuide.applicableLaw}:
+${activeGuide.keyRights.map((r, i) => `   (${String.fromCharCode(97 + i)}) ${r}`).join('\n')}
+
+Despite repeated reminders and lawful demands, you have unlawfully withheld the rightful sum of ${noticeForm.disputedAmount} without legal justification, causing acute financial distress, mental agony, and business loss.
+
+3. FINAL FORMAL REQUISITION:
+I hereby call upon you to unconditionally pay / disburse the sum of ${noticeForm.disputedAmount} (or provide the necessary statutory remedy) within a peremptory window of ${noticeForm.noticeDays} DAYS from the receipt of this notice.
+
+4. NOTICE OF IMPENDING LITIGATION:
+TAKE NOTICE that if you fail to comply with the statutory demand within the aforesaid ${noticeForm.noticeDays} days, the undersigned shall be constrained to initiate formal proceedings before the competent Forum / Court / Tribunal / Redressal Commission having jurisdiction:
+   - For recovery of ${noticeForm.disputedAmount} along with penal interest at 18% per annum;
+   - Exemplary damages for mental harassment and deficiency of service;
+   - All court fees, advocate expenses, and litigation costs attributable solely to your default.
+
+A copy of this notice is preserved for formal tender in court as primary documentary evidence of pre-litigation demand.
+
+Yours faithfully,
+
+_____________________________
+${noticeForm.senderName}
+(Complainant / Claimant)
+Place: New Delhi / India`;
+  };
+
+  const activeNoticeText = isWizardOpen ? generateDynamicNotice() : customNoticeBody;
 
   const filteredGuides = CITIZEN_RIGHTS_GUIDES.filter((guide) => {
     const matchesCat = selectedCategory === 'all' || guide.category === selectedCategory;
@@ -41,7 +146,7 @@ export default function CitizenRights({ onNavigateToRTI, onAskAssistant }) {
   });
 
   const handleCopyNotice = () => {
-    navigator.clipboard.writeText(customNoticeBody);
+    navigator.clipboard.writeText(activeNoticeText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -50,19 +155,51 @@ export default function CitizenRights({ onNavigateToRTI, onAskAssistant }) {
     window.print();
   };
 
+  const handleDownloadTxt = () => {
+    const element = document.createElement('a');
+    const file = new Blob([activeNoticeText], { type: 'text/plain;charset=utf-8' });
+    element.href = URL.createObjectURL(file);
+    element.download = `Legal_Demand_Notice_${activeGuide.id}.txt`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
       {/* Hero Banner */}
       <section className="hero-banner">
         <div className="hero-pill">
-          <Scale size={14} /> Citizen Rights & Legal Remedies Hub
+          <Scale size={14} /> Citizen Rights & Statutory Remedies Hub
         </div>
         <h1 className="hero-title">
-          Know your legal protections. <span className="text-gradient">Take decisive action</span>.
+          Know your statutory protections. <span className="text-gradient">Take decisive legal action</span>.
         </h1>
         <p className="hero-subtitle">
-          Plain-English rights breakdowns for tenants, consumers, employees, and cyber fraud victims with auto-generated legal demand notices.
+          Plain-English rights breakdowns for tenants, consumers, employees, and cyber fraud victims with 1-click printable legal demand notices.
         </p>
+
+        <div className="trust-ribbon">
+          <div className="trust-ribbon-item">
+            <CheckCircle2 size={13} className="trust-check-icon" />
+            <span>Model Tenancy Act 2021 Ready</span>
+          </div>
+          <div className="trust-ribbon-sep" />
+          <div className="trust-ribbon-item">
+            <CheckCircle2 size={13} className="trust-check-icon" />
+            <span>Consumer Protection Act 2019 (e-Daakhil)</span>
+          </div>
+          <div className="trust-ribbon-sep" />
+          <div className="trust-ribbon-item">
+            <CheckCircle2 size={13} className="trust-check-icon" />
+            <span>Payment of Wages Act 1936</span>
+          </div>
+          <div className="trust-ribbon-sep" />
+          <div className="trust-ribbon-item">
+            <CheckCircle2 size={13} className="trust-check-icon" />
+            <span>Speed Post AD Ready Formatting</span>
+          </div>
+        </div>
       </section>
 
       {/* Filter & Search Bar */}
@@ -73,7 +210,7 @@ export default function CitizenRights({ onNavigateToRTI, onAskAssistant }) {
             <input
               type="text"
               className="search-input"
-              placeholder="Search citizen rights issues (e.g. security deposit, defective product refund, unpaid salary, UPI fraud)..."
+              placeholder="Search citizen rights (e.g. security deposit, defective product refund, unpaid salary, UPI fraud)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -87,7 +224,7 @@ export default function CitizenRights({ onNavigateToRTI, onAskAssistant }) {
               onClick={() => setSelectedCategory(cat.id)}
               className={`prompt-chip ${selectedCategory === cat.id ? 'active' : ''}`}
               style={{
-                background: selectedCategory === cat.id ? 'linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%)' : 'rgba(255,255,255,0.05)',
+                background: selectedCategory === cat.id ? 'linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%)' : 'rgba(255,255,255,0.05)',
                 color: selectedCategory === cat.id ? '#fff' : 'var(--text-muted)',
                 borderColor: selectedCategory === cat.id ? 'var(--primary)' : 'var(--border-color)'
               }}
@@ -103,7 +240,7 @@ export default function CitizenRights({ onNavigateToRTI, onAskAssistant }) {
         {/* Left Column: Topics / Guides List */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <h3 style={{ fontSize: '1rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Available Citizen Guides ({filteredGuides.length})
+            Statutory Guides ({filteredGuides.length})
           </h3>
 
           {filteredGuides.map((guide) => (
@@ -114,13 +251,13 @@ export default function CitizenRights({ onNavigateToRTI, onAskAssistant }) {
                 padding: '1.25rem', 
                 cursor: 'pointer',
                 borderColor: selectedGuideId === guide.id ? 'var(--primary)' : 'var(--border-color)',
-                boxShadow: selectedGuideId === guide.id ? '0 0 16px rgba(99, 102, 241, 0.2)' : 'none',
+                boxShadow: selectedGuideId === guide.id ? '0 0 16px rgba(37, 99, 235, 0.2)' : 'none',
                 transition: 'all 0.2s ease'
               }}
               onClick={() => handleSelectGuide(guide)}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-                <h4 style={{ fontSize: '1.05rem', margin: 0, color: selectedGuideId === guide.id ? '#a5b4fc' : 'var(--text-main)' }}>
+                <h4 style={{ fontSize: '1.05rem', margin: 0, color: selectedGuideId === guide.id ? '#93c5fd' : 'var(--text-main)' }}>
                   {guide.title}
                 </h4>
                 <span className="risk-badge Low" style={{ textTransform: 'capitalize', fontSize: '0.72rem' }}>
@@ -145,15 +282,15 @@ export default function CitizenRights({ onNavigateToRTI, onAskAssistant }) {
               <Shield size={20} color="var(--primary)" />
               <h2 style={{ fontSize: '1.3rem', margin: 0 }}>{activeGuide.title}</h2>
             </div>
-            <p style={{ fontSize: '0.84rem', color: '#a5b4fc', margin: '4px 0 0 0' }}>
-              Statute: <strong>{activeGuide.applicableLaw}</strong>
+            <p style={{ fontSize: '0.84rem', color: '#93c5fd', margin: '4px 0 0 0' }}>
+              Governing Statute: <strong>{activeGuide.applicableLaw}</strong>
             </p>
           </div>
 
           {/* Key Rights Section */}
           <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '1.25rem' }}>
             <h3 style={{ fontSize: '0.95rem', color: '#34d399', display: 'flex', alignItems: 'center', gap: '6px', marginTop: 0 }}>
-              <CheckCircle2 size={16} /> Your Statutory Protections & Rights:
+              <CheckCircle2 size={16} /> Your Statutory Protections & Citizen Rights:
             </h3>
             <ul style={{ margin: '8px 0 0', paddingLeft: '1.25rem', fontSize: '0.85rem', lineHeight: 1.6, color: 'var(--text-main)' }}>
               {activeGuide.keyRights.map((r, idx) => (
@@ -193,31 +330,152 @@ export default function CitizenRights({ onNavigateToRTI, onAskAssistant }) {
 
           {/* Official Demand Notice Generator */}
           <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-              <h3 style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-                <FileText size={16} color="var(--primary)" /> Ready-to-Send Legal Demand Notice:
-              </h3>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <button className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={handleCopyNotice}>
-                  {copied ? <><Check size={13} color="#34d399" /> Copied!</> : <><Copy size={13} /> Copy Notice</>}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+              <div>
+                <h3 style={{ fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                  <FileText size={17} color="var(--primary)" /> 
+                  <span>Statutory Legal Demand Notice</span>
+                </h3>
+                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                  Legally enforceable notice under {activeGuide.applicableLaw}
+                </span>
+              </div>
+
+              {/* Mode Toggle & Actions */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <button 
+                  className={`btn-secondary ${isWizardOpen ? 'active-toggle' : ''}`}
+                  style={{ padding: '6px 11px', fontSize: '0.78rem' }}
+                  onClick={() => setIsWizardOpen(!isWizardOpen)}
+                >
+                  <Sliders size={13} color={isWizardOpen ? '#93c5fd' : 'var(--text-muted)'} />
+                  <span>{isWizardOpen ? 'Manual Text Editor' : '⚡ Interactive Notice Wizard'}</span>
                 </button>
-                <button className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={handlePrint}>
-                  <Printer size={13} /> Print
+
+                <button 
+                  className="btn-secondary" 
+                  style={{ padding: '6px 11px', fontSize: '0.78rem' }} 
+                  onClick={handleCopyNotice}
+                  title="Copy formatted notice to clipboard"
+                >
+                  {copied ? <><Check size={13} color="#34d399" /> Copied!</> : <><Copy size={13} /> Copy</>}
+                </button>
+
+                <button 
+                  className="btn-secondary" 
+                  style={{ padding: '6px 11px', fontSize: '0.78rem' }} 
+                  onClick={handleDownloadTxt}
+                  title="Download notice as plain text file"
+                >
+                  <Download size={13} /> .TXT
+                </button>
+
+                <button 
+                  className="btn-primary" 
+                  style={{ padding: '6px 14px', fontSize: '0.78rem' }} 
+                  onClick={handlePrint}
+                  title="Print or Save as PDF"
+                >
+                  <Printer size={13} /> Print Notice
                 </button>
               </div>
             </div>
 
-            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
-              Edit the bracketed details (e.g. [Amount], [Date]) directly in the box below before copying or sending via Registered Post / Email:
-            </p>
+            {/* Interactive Notice Wizard Form */}
+            {isWizardOpen && (
+              <div className="notice-wizard-panel">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Notice Variables (Auto-Injected into Legal Letter)
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    Fill details once, updates in real time
+                  </span>
+                </div>
 
-            <textarea 
-              className="custom-input"
-              rows={12}
-              style={{ fontFamily: 'monospace', fontSize: '0.82rem', lineHeight: 1.5, resize: 'vertical' }}
-              value={customNoticeBody}
-              onChange={(e) => setCustomNoticeBody(e.target.value)}
-            />
+                <div className="wizard-form-grid">
+                  <div className="wizard-field">
+                    <label>Citizen / Sender Full Name:</label>
+                    <input 
+                      type="text" 
+                      className="custom-input wizard-input"
+                      value={noticeForm.senderName}
+                      onChange={(e) => setNoticeForm({ ...noticeForm, senderName: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="wizard-field">
+                    <label>Disputed Amount in ₹ INR:</label>
+                    <input 
+                      type="text" 
+                      className="custom-input wizard-input"
+                      value={noticeForm.disputedAmount}
+                      onChange={(e) => setNoticeForm({ ...noticeForm, disputedAmount: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="wizard-field">
+                    <label>Opposite Party (Landlord / Company / Bank):</label>
+                    <input 
+                      type="text" 
+                      className="custom-input wizard-input"
+                      value={noticeForm.opponentName}
+                      onChange={(e) => setNoticeForm({ ...noticeForm, opponentName: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="wizard-field">
+                    <label>Opposite Party Address / Branch:</label>
+                    <input 
+                      type="text" 
+                      className="custom-input wizard-input"
+                      value={noticeForm.opponentAddress}
+                      onChange={(e) => setNoticeForm({ ...noticeForm, opponentAddress: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="wizard-field">
+                    <label>Transaction / Lease Reference / Invoice #:</label>
+                    <input 
+                      type="text" 
+                      className="custom-input wizard-input"
+                      value={noticeForm.transactionRef}
+                      onChange={(e) => setNoticeForm({ ...noticeForm, transactionRef: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="wizard-field">
+                    <label>Peremptory Notice Window (Days):</label>
+                    <select 
+                      className="custom-input wizard-input"
+                      value={noticeForm.noticeDays}
+                      onChange={(e) => setNoticeForm({ ...noticeForm, noticeDays: e.target.value })}
+                    >
+                      <option value="7">7 Days (Urgent Settlement)</option>
+                      <option value="15">15 Days (Standard Legal Notice)</option>
+                      <option value="30">30 Days (Statutory Government/Corporate)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Printable Notice Paper Viewer */}
+            <div className="printable-notice-container">
+              <div className="printable-notice-badge">
+                <span>Official Legal Notice Draft</span>
+                <span>Speed Post AD Standard</span>
+              </div>
+              <textarea 
+                className="printable-notice scroller"
+                rows={16}
+                value={activeNoticeText}
+                onChange={(e) => {
+                  setCustomNoticeBody(e.target.value);
+                  if (isWizardOpen) setIsWizardOpen(false);
+                }}
+              />
+            </div>
           </div>
 
           {/* Bridge Actions: RTI and AI Assistant */}
@@ -234,7 +492,7 @@ export default function CitizenRights({ onNavigateToRTI, onAskAssistant }) {
               style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.84rem' }}
               onClick={() => onAskAssistant?.(`What are my legal rights regarding ${activeGuide.title} under ${activeGuide.applicableLaw}?`)}
             >
-              <MessageSquareText size={15} color="#a5b4fc" /> Ask Legal Assistant <ArrowRight size={14} />
+              <MessageSquareText size={15} color="#93c5fd" /> Ask Legal Assistant <ArrowRight size={14} />
             </button>
           </div>
         </div>
