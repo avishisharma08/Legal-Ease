@@ -21,112 +21,87 @@ export default function ContractAnalyzer({ onAskAssistant }) {
   const [expandedClauseId, setExpandedClauseId] = useState('fc2');
   const [copied, setCopied] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [liveAnalysis, setLiveAnalysis] = useState(null);
+  const [error, setError] = useState('');
 
   const activeSample = SAMPLE_CONTRACTS.find(s => s.id === selectedSampleId) || SAMPLE_CONTRACTS[0];
-
-  // Dynamic analysis computation if text is modified or custom contract is pasted
-  const getAnalysis = () => {
-    if (contractText === activeSample.fullText) {
-      return activeSample;
-    }
-    
-    // Simple dynamic rule-based analyzer for custom pasted text
-    const lower = contractText.toLowerCase();
-    const clauses = [];
-    let score = 20;
-
-    if (lower.includes('indemnify') || lower.includes('hold harmless')) {
-      score += 30;
-      clauses.push({
-        id: 'dyn-1',
-        title: 'Indemnification & Liability Assumption',
-        type: 'Liability',
-        risk: 'High',
-        originalText: 'Extracted indemnification phrase within document...',
-        simplifiedText: 'You may be forced to pay legal fees and damages if a third party sues over this agreement.',
-        recommendation: 'Request a mutual liability cap limited to fees paid.'
-      });
-    }
-
-    if (lower.includes('work made for hire') || lower.includes('copyright') || lower.includes('ownership')) {
-      score += 25;
-      clauses.push({
-        id: 'dyn-2',
-        title: 'Intellectual Property Ownership',
-        type: 'IP Rights',
-        risk: 'Medium',
-        originalText: 'All work products and IP vest immediately in client...',
-        simplifiedText: 'The client will own everything you create for them under this contract.',
-        recommendation: 'Ensure IP transfer occurs ONLY after full payment is received.'
-      });
-    }
-
-    if (lower.includes('liquidated damages') || lower.includes('penalty')) {
-      score += 25;
-      clauses.push({
-        id: 'dyn-3',
-        title: 'Pre-Determined Financial Penalty',
-        type: 'Penalty',
-        risk: 'Critical',
-        originalText: 'Liquidated damages of specific dollar amounts assigned per breach...',
-        simplifiedText: 'Fixed monetary penalties are specified if specific terms are broken.',
-        recommendation: 'Carefully check dollar amounts and remove fixed punitive fines.'
-      });
-    }
-
-    if (lower.includes('terminate') || lower.includes('cancellation')) {
-      score += 10;
-      clauses.push({
-        id: 'dyn-4',
-        title: 'Termination Rights & Notice Period',
-        type: 'Termination',
-        risk: 'Low',
-        originalText: 'Terms regarding cancellation and notice periods...',
-        simplifiedText: 'Rules defining how either party can end this agreement.',
-        recommendation: 'Ensure a balanced 14-to-30 day written notice period.'
-      });
-    }
-
-    const finalScore = Math.min(100, Math.max(10, score));
-    let overall = 'Low';
-    if (finalScore >= 75) overall = 'Critical';
-    else if (finalScore >= 50) overall = 'High';
-    else if (finalScore >= 30) overall = 'Medium';
-
-    return {
-      id: 'custom',
-      title: 'Custom Analyzed Contract',
-      category: 'User Upload',
-      overallRisk: overall,
-      riskScore: finalScore,
-      summary: `Analyzed ${contractText.length} characters of legal text. Found ${clauses.length} key clause areas. Risk score estimated at ${finalScore}/100.`,
-      clauses: clauses.length > 0 ? clauses : [
-        {
-          id: 'dyn-def',
-          title: 'Standard Terms Detected',
-          type: 'General',
-          risk: 'Low',
-          originalText: contractText.slice(0, 150) + '...',
-          simplifiedText: 'Standard agreement language without immediate high-risk red flag triggers.',
-          recommendation: 'Always review jurisdiction and payment terms carefully.'
-        }
-      ]
-    };
-  };
-
-  const analysis = getAnalysis();
+  const analysis = liveAnalysis || activeSample;
 
   const handleSelectSample = (sample) => {
     setSelectedSampleId(sample.id);
     setContractText(sample.fullText);
+    setLiveAnalysis(null);
+    setError('');
     setExpandedClauseId(sample.clauses[0]?.id || '');
   };
 
-  const handleReanalyze = () => {
+  const handleReanalyze = async () => {
+    const textToAnalyze = contractText.trim();
+    if (!textToAnalyze) {
+      setError('Please paste or select a contract to analyze.');
+      return;
+    }
+    if (textToAnalyze.length < 20) {
+      setError('Contract text is too short to analyze. Please provide a more complete agreement or clauses.');
+      return;
+    }
+
     setIsAnalyzing(true);
-    setTimeout(() => {
+    setError('');
+
+    try {
+      const response = await fetch('http://localhost:8000/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ contract_text: textToAnalyze })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || `Analysis failed with status ${response.status}`);
+      }
+
+      const normalizeRisk = (lvl) => {
+        if (!lvl) return 'Medium';
+        const str = String(lvl).toLowerCase();
+        if (str === 'critical') return 'Critical';
+        if (str === 'high') return 'High';
+        if (str === 'low') return 'Low';
+        return 'Medium';
+      };
+
+      const formattedClauses = (data.clauses || []).map((c, index) => ({
+        id: `clause-${index}`,
+        title: c.clause_title || 'Flagged Clause',
+        risk: normalizeRisk(c.severity),
+        originalText: c.original_text || '',
+        simplifiedText: c.plain_english || '',
+        recommendation: c.recommendation || ''
+      }));
+
+      const formattedAnalysis = {
+        id: 'live-' + Date.now(),
+        title: data.title || 'Analyzed Agreement',
+        category: data.category || 'General Agreement',
+        overallRisk: normalizeRisk(data.risk_level),
+        riskScore: typeof data.risk_score === 'number' ? data.risk_score : 50,
+        summary: data.executive_summary || '',
+        clauses: formattedClauses
+      };
+
+      setLiveAnalysis(formattedAnalysis);
+      if (formattedClauses.length > 0) {
+        setExpandedClauseId(formattedClauses[0].id);
+      }
+    } catch (err) {
+      console.error('Contract analysis error:', err);
+      setError(err.message || 'Failed to connect to backend at http://localhost:8000/analyze');
+    } finally {
       setIsAnalyzing(false);
-    }, 400);
+    }
   };
 
   const handleCopySummary = () => {
@@ -186,13 +161,43 @@ export default function ContractAnalyzer({ onAskAssistant }) {
           />
 
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button className="btn-primary" style={{ flex: 1 }} onClick={handleReanalyze}>
+            <button
+              className="btn-primary"
+              style={{ flex: 1, opacity: isAnalyzing ? 0.75 : 1, cursor: isAnalyzing ? 'not-allowed' : 'pointer' }}
+              onClick={handleReanalyze}
+              disabled={isAnalyzing}
+            >
               <Zap size={16} /> {isAnalyzing ? 'Scanning Clauses...' : 'Analyze Document'}
             </button>
-            <button className="btn-secondary" onClick={() => setContractText('')}>
+            <button
+              className="btn-secondary"
+              onClick={() => {
+                setContractText('');
+                setError('');
+              }}
+              disabled={isAnalyzing}
+            >
               Clear Text
             </button>
           </div>
+
+          {error && (
+            <div style={{
+              background: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.35)',
+              color: '#fca5a5',
+              padding: '0.75rem 1rem',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.8rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              lineHeight: 1.4
+            }}>
+              <AlertTriangle size={16} color="#ef4444" style={{ flexShrink: 0 }} />
+              <span>{error}</span>
+            </div>
+          )}
         </div>
 
         {/* Right Side: Analysis & Risk Results */}
