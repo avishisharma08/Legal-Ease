@@ -11,6 +11,8 @@ import google.generativeai as genai
 from fastapi import UploadFile, File, HTTPException
 import pdfplumber
 import io
+import pytesseract
+from PIL import Image
 
 # Resolve the backend directory path to reliably find .env regardless of working directory
 BACKEND_DIR = Path(__file__).resolve().parent
@@ -33,6 +35,7 @@ app = FastAPI(
     description="Backend API for LegalEase — AI-powered legal document simplification and contract risk analysis",
     version="0.2.0"
 )
+pytesseract.pytesseract.tesseract_cmd = r"C:\LegalEase\tesseract.exe"
 
 # Enable CORS for frontend integration
 app.add_middleware(
@@ -350,19 +353,48 @@ async def extract_text(file: UploadFile = File(...)):
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Could not read PDF file: {str(e)}")
 
+        # Fallback to OCR if no text was extracted (likely a scanned PDF)
+        if not extracted_text.strip():
+            try:
+                import pdfplumber as pdfp
+                ocr_text = ""
+                with pdfplumber.open(io.BytesIO(contents)) as pdf:
+                    for page in pdf.pages:
+                        page_image = page.to_image(resolution=300).original
+                        ocr_text += pytesseract.image_to_string(page_image) + "\n"
+                extracted_text = ocr_text
+            except Exception as e:
+                raise HTTPException(status_code=422, detail=f"Could not extract text via OCR: {str(e)}")
+
         if not extracted_text.strip():
             raise HTTPException(
                 status_code=422,
-                detail="No readable text found in this PDF. It may be a scanned document — OCR support is coming next."
+                detail="Could not extract readable text from this file, please try a clearer scan or paste the text manually."
             )
 
         return {"extracted_text": extracted_text.strip(), "source_type": "pdf"}
 
+    elif filename.endswith((".jpg", ".jpeg", ".png")):
+        try:
+            image = Image.open(io.BytesIO(contents))
+            extracted_text = pytesseract.image_to_string(image)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Could not process image: {str(e)}")
+
+        if not extracted_text.strip():
+            raise HTTPException(
+                status_code=422,
+                detail="Could not extract readable text from this image, please try a clearer scan or paste the text manually."
+            )
+
+        return {"extracted_text": extracted_text.strip(), "source_type": "ocr"}
+
     else:
         raise HTTPException(
             status_code=400,
-            detail="Unsupported file type. Please upload a .txt or .pdf file."
+            detail="Unsupported file type. Please upload a .txt, .pdf, .jpg, or .png file."
         )
+        
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
