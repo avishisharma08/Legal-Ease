@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { API_BASE_URL } from '../config/api';
 import { 
   Bot, 
   Send, 
@@ -115,7 +116,7 @@ export default function LegalAssistant({ initialPrompt }) {
           content: m.text
         }));
 
-      const response = await fetch('http://localhost:8000/chat', {
+      const response = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

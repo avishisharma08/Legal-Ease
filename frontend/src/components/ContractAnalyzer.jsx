@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SAMPLE_CONTRACTS } from '../data/sampleContracts';
 import NegotiationStudioModal from './NegotiationStudioModal';
+import { API_BASE_URL } from '../config/api';
 import { 
   AlertTriangle, 
   ShieldAlert, 
@@ -93,7 +94,7 @@ export default function ContractAnalyzer({ onAskAssistant }) {
     formData.append('file', file);
 
     try {
-      const response = await fetch('http://localhost:8000/extract-text', {
+      const response = await fetch(`${API_BASE_URL}/extract-text`, {
         method: 'POST',
         body: formData,
       });
@@ -149,7 +150,7 @@ export default function ContractAnalyzer({ onAskAssistant }) {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:8000/analyze', {
+      const response = await fetch(`${API_BASE_URL}/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -202,7 +203,7 @@ export default function ContractAnalyzer({ onAskAssistant }) {
       }
     } catch (err) {
       console.error('Contract analysis error:', err);
-      setError(err.message || 'Failed to connect to backend at http://localhost:8000/analyze');
+      setError(err.message || `Failed to connect to backend at ${API_BASE_URL}/analyze`);
     } finally {
       setIsAnalyzing(false);
     }
@@ -239,7 +240,7 @@ export default function ContractAnalyzer({ onAskAssistant }) {
     if (!questionToAsk) setDocQuestion('');
 
     try {
-      const response = await fetch('http://localhost:8000/ask-doc', {
+      const response = await fetch(`${API_BASE_URL}/ask-doc`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -285,7 +286,7 @@ export default function ContractAnalyzer({ onAskAssistant }) {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:8000/generate-redline', {
+      const response = await fetch(`${API_BASE_URL}/generate-redline`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

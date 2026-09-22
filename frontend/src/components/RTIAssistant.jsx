@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_BASE_URL } from '../config/api';
 import { 
   Building2, 
   FileText, 
@@ -130,7 +131,7 @@ export default function RTIAssistant() {
   const handleGenerateRTI = async () => {
     setIsGenerating(true);
     try {
-      const response = await fetch('http://localhost:8000/draft-rti', {
+      const response = await fetch(`${API_BASE_URL}/draft-rti`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
