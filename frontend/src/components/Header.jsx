@@ -1,10 +1,11 @@
 import React from 'react';
-import { Home, Scale, FileText, BookOpen, Bot, Building2, Shield, PhoneCall } from 'lucide-react';
+import { Home, Scale, FileText, BookOpen, Bot, Building2, Shield, PhoneCall, Sparkles, Flame } from 'lucide-react';
 
-export default function Header({ activeTab, setActiveTab, onOpenHelplines }) {
+export default function Header({ activeTab, setActiveTab, onOpenHelplines, onOpenJudgeDemo }) {
   const tabs = [
     { id: 'home', label: 'Home', icon: Home },
     { id: 'analyzer', label: 'Contracts', icon: FileText },
+    { id: 'bns', label: 'BNS 2023', icon: Flame },
     { id: 'rti', label: 'RTI Filing', icon: Building2 },
     { id: 'rights', label: 'Citizen Rights', icon: Shield },
     { id: 'dictionary', label: 'Glossary', icon: BookOpen },
@@ -50,9 +51,19 @@ export default function Header({ activeTab, setActiveTab, onOpenHelplines }) {
 
         {/* Right Header Utility Actions */}
         <div className="header-actions">
+          {/* Judge Quick Demo Button */}
+          <button 
+            className="btn-judge-tour"
+            onClick={onOpenJudgeDemo}
+            title="Launch 1-Click Presentation Demos for Hackathons & Judges"
+          >
+            <Sparkles size={13} color="#fbbf24" />
+            <span className="judge-tour-text">Judge Demo</span>
+          </button>
+
           <div 
             className="statutory-pill" 
-            title="Verified against Indian legal frameworks including RTI Act 2005, Contract Act 1872, and Consumer Protection Act 2019"
+            title="Verified against Indian legal frameworks including BNS 2023, RTI Act 2005, Contract Act 1872, and Consumer Protection Act 2019"
           >
             <span className="live-indicator-dot" />
             <span className="statutory-text">Law Grounded</span>

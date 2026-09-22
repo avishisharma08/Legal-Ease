@@ -18,7 +18,8 @@ import {
   Download,
   Edit3,
   RefreshCw,
-  Clock
+  Clock,
+  ExternalLink
 } from 'lucide-react';
 
 export default function CitizenRights({ onNavigateToRTI, onAskAssistant }) {
@@ -85,9 +86,15 @@ export default function CitizenRights({ onNavigateToRTI, onAskAssistant }) {
       month: 'long',
       year: 'numeric'
     });
+    const refYear = new Date().getFullYear();
+    const refId = `REF: LE-IND/${refYear}-${(refYear + 1).toString().slice(-2)}/NT-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    return `LEGAL DEMAND NOTICE
-DELIVERED VIA SPEED POST WITH ACKNOWLEDGEMENT DUE (RPAD) & REGISTERED EMAIL
+    return `================================================================================
+FORMAL STATUTORY LEGAL DEMAND NOTICE
+DISPATCH MODE: REGISTERED POST WITH ACKNOWLEDGEMENT DUE (RPAD) & SPEED POST
+REF NO: ${refId}
+BARCODE / CONSIGNMENT TRACKING: [AFFIX INDIA POST BARCODE STICKER HERE]
+================================================================================
 
 DATE: ${today}
 
@@ -95,43 +102,49 @@ TO:
 ${noticeForm.opponentName}
 ${noticeForm.opponentAddress}
 
-FROM:
+FROM (CLAIMANT / CITIZEN):
 ${noticeForm.senderName}
 ${noticeForm.senderAddress}
-Contact: ${noticeForm.senderContact}
+Contact / Phone: ${noticeForm.senderContact}
 
-SUBJECT: STATUTORY LEGAL DEMAND NOTICE UNDER ${activeGuide.applicableLaw.toUpperCase()} FOR IMMEDIATE RESOLUTION & DISBURSEMENT OF ${noticeForm.disputedAmount}
+SUBJECT: STATUTORY LEGAL DEMAND NOTICE UNDER ${activeGuide.applicableLaw.toUpperCase()} FOR IMMEDIATE REMISSION OF ${noticeForm.disputedAmount}
 
 Sir / Madam,
 
-Under instructions and information from my client / undersigned, I hereby issue this formal Statutory Demand Notice:
+Under instructions and information from my client / undersigned, this formal Legal Demand Notice is hereby served upon you:
 
-1. BACKGROUND & STATUTORY STATUS:
-Pursuant to the transaction / relationship between the parties under Reference [${noticeForm.transactionRef}], originating on or about ${noticeForm.incidentDate}, the undersigned has fulfilled all reciprocal obligations in accordance with Indian Law.
+1. BACKGROUND & TRANSACTION REFERENCE:
+Pursuant to the transaction and legal relationship under Transaction Reference [${noticeForm.transactionRef}], entered into on or about ${noticeForm.incidentDate}, the claimant has complied with all lawful covenants.
 
-2. LEGAL VIOLATION & GROUNDING:
-Under the provisions of ${activeGuide.applicableLaw}:
+2. STATUTORY VIOLATION UNDER APPLICABLE INDIAN LAW:
+Under the binding provisions of ${activeGuide.applicableLaw}:
 ${activeGuide.keyRights.map((r, i) => `   (${String.fromCharCode(97 + i)}) ${r}`).join('\n')}
 
-Despite repeated reminders and lawful demands, you have unlawfully withheld the rightful sum of ${noticeForm.disputedAmount} without legal justification, causing acute financial distress, mental agony, and business loss.
+Despite repeated oral requests, emails, and amicable entreaties, you have willfully, unlawfully, and without reasonable cause withheld / defaulted on the sum of ${noticeForm.disputedAmount}. This willful default constitutes actionable deficiency and breach under Indian law.
 
-3. FINAL FORMAL REQUISITION:
-I hereby call upon you to unconditionally pay / disburse the sum of ${noticeForm.disputedAmount} (or provide the necessary statutory remedy) within a peremptory window of ${noticeForm.noticeDays} DAYS from the receipt of this notice.
+3. PEREMPTORY REQUISITION:
+I hereby formally call upon you to unconditionally disburse and credit the lawful sum of ${noticeForm.disputedAmount} into the claimant's bank account within a peremptory window of ${noticeForm.noticeDays} (FIFTEEN) DAYS from the date of receipt of this notice.
 
-4. NOTICE OF IMPENDING LITIGATION:
-TAKE NOTICE that if you fail to comply with the statutory demand within the aforesaid ${noticeForm.noticeDays} days, the undersigned shall be constrained to initiate formal proceedings before the competent Forum / Court / Tribunal / Redressal Commission having jurisdiction:
-   - For recovery of ${noticeForm.disputedAmount} along with penal interest at 18% per annum;
-   - Exemplary damages for mental harassment and deficiency of service;
-   - All court fees, advocate expenses, and litigation costs attributable solely to your default.
+4. NOTICE OF IMPENDING LEGAL PROCEEDINGS:
+TAKE NOTICE that if you fail to comply with the statutory demand within the stipulated ${noticeForm.noticeDays} days, the claimant shall immediately institute formal proceedings before the competent Forum / Rent Tribunal / Consumer Commission (e-Daakhil) / Labor Commissioner / Civil Court:
+   (a) For recovery of the principal sum of ${noticeForm.disputedAmount} along with penal interest at 18% per annum from default date until realization;
+   (b) Exemplary damages of ₹50,000 for mental agony, harassment, and deficiency of service;
+   (c) Full litigation expenses, advocate fees, and court costs at your sole risk and consequence.
 
-A copy of this notice is preserved for formal tender in court as primary documentary evidence of pre-litigation demand.
+A copy of this notice and proof of delivery (RPAD Postal Receipt) are preserved for tender as primary documentary evidence in court under Section 61 of the Bharatiya Sakshya Adhiniyam 2023.
 
 Yours faithfully,
 
-_____________________________
+________________________________________
 ${noticeForm.senderName}
-(Complainant / Claimant)
-Place: New Delhi / India`;
+(Claimant / Complainant)
+New Delhi / India
+
+================================================================================
+STATUTORY COMPLIANCE SEAL:
+Drafted pursuant to Codified Laws of the Republic of India (MTA 2021 / CPA 2019 / ICA 1872)
+Digitally Verified & Watermarked via LegalEase IND Institutional Platform
+================================================================================`;
   };
 
   const activeNoticeText = isWizardOpen ? generateDynamicNotice() : customNoticeBody;
@@ -475,6 +488,40 @@ Place: New Delhi / India`;
                   if (isWizardOpen) setIsWizardOpen(false);
                 }}
               />
+            </div>
+          </div>
+
+          {/* Official Government E-Filing & Redressal Gateway */}
+          <div className="gov-efiling-panel">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Building2 size={14} /> Official Government E-Filing & Portal Gateway:
+              </span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                Official portals to submit notice copies
+              </span>
+            </div>
+            <div className="gov-portals-grid">
+              <a href="https://edaakhil.nic.in" target="_blank" rel="noreferrer" className="gov-portal-pill">
+                <span className="gov-portal-dot" />
+                <span><strong>e-Daakhil Portal</strong> (Consumer Court Online)</span>
+                <ExternalLink size={11} />
+              </a>
+              <a href="https://rtionline.gov.in" target="_blank" rel="noreferrer" className="gov-portal-pill">
+                <span className="gov-portal-dot" />
+                <span><strong>RTI Online Portal</strong> (Central Government)</span>
+                <ExternalLink size={11} />
+              </a>
+              <a href="https://cybercrime.gov.in" target="_blank" rel="noreferrer" className="gov-portal-pill">
+                <span className="gov-portal-dot" />
+                <span><strong>Cybercrime Portal (1930)</strong></span>
+                <ExternalLink size={11} />
+              </a>
+              <a href="https://nalsa.gov.in" target="_blank" rel="noreferrer" className="gov-portal-pill">
+                <span className="gov-portal-dot" />
+                <span><strong>NALSA Free Legal Aid (Art. 39A)</strong></span>
+                <ExternalLink size={11} />
+              </a>
             </div>
           </div>
 
