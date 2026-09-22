@@ -124,6 +124,54 @@ export default function BNSConverter({ onAskAssistant }) {
           </div>
         </div>
 
+        {/* Instant Trending Quick Searches */}
+        <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', margin: '0.65rem 0 0.85rem 0', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.74rem', color: '#94a3b8', fontWeight: 600 }}>Quick Lookups:</span>
+          {[
+            { label: '🔥 Cheating (IPC 420 ➔ BNS 318)', query: '420' },
+            { label: '⚖️ Murder (IPC 302 ➔ BNS 103)', query: '302' },
+            { label: '📜 Defamation (IPC 499 ➔ BNS 356)', query: '499' },
+            { label: '✍️ Forgery (IPC 465 ➔ BNS 336)', query: '465' },
+            { label: '⚡ Theft (IPC 379 ➔ BNS 303)', query: '379' },
+            { label: '📱 Zero FIR & Digital Evidence', query: 'zero' }
+          ].map((chip, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => setSearchQuery(chip.query)}
+              style={{
+                fontSize: '0.72rem',
+                padding: '3px 9px',
+                borderRadius: '6px',
+                background: searchQuery === chip.query ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.08)',
+                border: '1px solid ' + (searchQuery === chip.query ? 'rgba(59, 130, 246, 0.6)' : 'rgba(59, 130, 246, 0.2)'),
+                color: searchQuery === chip.query ? '#ffffff' : '#93c5fd',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              {chip.label}
+            </button>
+          ))}
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              style={{
+                fontSize: '0.7rem',
+                padding: '2px 7px',
+                borderRadius: '5px',
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#fca5a5',
+                cursor: 'pointer'
+              }}
+            >
+              ✕ Clear
+            </button>
+          )}
+        </div>
+
         {/* Category Filter Pills */}
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           {BNS_CATEGORIES.map((cat) => (
