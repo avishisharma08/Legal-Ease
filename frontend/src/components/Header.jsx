@@ -60,7 +60,7 @@ export default function Header({ activeTab, setActiveTab, onOpenHelplines, onOpe
             <Sparkles size={13} color="#fbbf24" />
             <span className="judge-tour-text">Judge Demo</span>
           </button>
-
+          
           <div 
             className="statutory-pill" 
             title="Verified against Indian legal frameworks including BNS 2023, RTI Act 2005, Contract Act 1872, and Consumer Protection Act 2019"
